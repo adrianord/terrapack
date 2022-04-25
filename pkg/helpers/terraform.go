@@ -16,15 +16,15 @@ import (
 	"github.com/hashicorp/hcl/v2/json"
 )
 
-type Config struct {
-	Terraform Terraform `hcl:"terraform,block"`
+type TerraformConfig struct {
+	Terraform TerraformBlock `hcl:"terraform,block"`
 }
 
-type Terraform struct {
-	Backend Backend `hcl:"backend,block"`
+type TerraformBlock struct {
+	Backend TerraformBackendBlock `hcl:"backend,block"`
 }
 
-type Backend struct {
+type TerraformBackendBlock struct {
 	Type         string      `hcl:"type,label"`
 	Organization string      `hcl:"organization,attr"`
 	Workspaces   []Workspace `hcl:"workspaces,block"`
@@ -34,8 +34,8 @@ type Workspace struct {
 	Name string `hcl:"name"`
 }
 
-func FindBackend(rootDir string) (*Config, error) {
-	var config *Config
+func FindBackend(rootDir string) (*TerraformConfig, error) {
+	var config *TerraformConfig
 	sanitizedRootDir := filepath.Clean(rootDir)
 	err := filepath.WalkDir(sanitizedRootDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -70,13 +70,13 @@ func FindBackend(rootDir string) (*Config, error) {
 	return config, nil
 }
 
-func processFile(path string) (*Config, error) {
+func processFile(path string) (*TerraformConfig, error) {
 	file, err := parseFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("%w", err)
 	}
 
-	var config Config
+	var config TerraformConfig
 	diag := gohcl.DecodeBody(file.Body, nil, &config)
 	if diag.HasErrors() {
 		errors := []error{}
