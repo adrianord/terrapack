@@ -26,6 +26,10 @@ func (u *Upload) Run() error {
 		Address: u.Url,
 		Token:   u.Token,
 	}
+	err := setToken(config)
+	if err != nil {
+		return err
+	}
 
 	message, err := u.getMessage()
 	if err != nil {
@@ -84,6 +88,29 @@ func (u *Upload) getMessage() (string, error) {
 type workspaceInfo struct {
 	Organization string
 	Workspace    string
+}
+
+func setToken(c *tfe.Config) error {
+	if c.Token != "" {
+		return nil
+	}
+	defaults := tfe.DefaultConfig()
+	if defaults.Token != "" {
+		c.Token = defaults.Token
+		return nil
+	}
+
+	url := c.Address
+	if url == "" {
+		url = defaults.Address
+	}
+
+	token, err := helpers.FindTerraformToken(url)
+	if err != nil {
+		return err
+	}
+	c.Token = token
+	return nil
 }
 
 func (u *Upload) getWorkspaceInformation() (*workspaceInfo, error) {

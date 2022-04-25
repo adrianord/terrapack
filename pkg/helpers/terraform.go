@@ -1,19 +1,20 @@
 package helpers
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"io/fs"
 	"io/ioutil"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/hashicorp/hcl/v2/json"
+	tJson "github.com/hashicorp/hcl/v2/json"
 )
 
 type TerraformConfig struct {
@@ -37,27 +38,18 @@ type Workspace struct {
 func FindBackend(rootDir string) (*TerraformConfig, error) {
 	var config *TerraformConfig
 	sanitizedRootDir := filepath.Clean(rootDir)
-	err := filepath.WalkDir(sanitizedRootDir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if d.IsDir() && strings.Count(path, string(os.PathSeparator)) > 1 {
-			return fs.SkipDir
+	items, err := ioutil.ReadDir(sanitizedRootDir)
+	if err != nil {
+		return nil, err
+	}
+	for _, item := range items {
+		path := path.Join(sanitizedRootDir, item.Name())
+		if item.IsDir() {
+			continue
 		}
 
 		config, err = processFile(path)
 		if err != nil {
-			return nil
-		}
-		if config != nil {
-			return io.EOF
-		}
-
-		return nil
-	})
-	if err != nil {
-		if err != io.EOF {
 			return nil, err
 		}
 	}
@@ -68,6 +60,44 @@ func FindBackend(rootDir string) (*TerraformConfig, error) {
 		return nil, fmt.Errorf("found backend with type %s, expected remote", config.Terraform.Backend.Type)
 	}
 	return config, nil
+}
+
+func FindTerraformToken(hostUrl string) (string, error) {
+	u, err := url.Parse(hostUrl)
+	if err != nil {
+		return "", err
+	}
+	dir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	tfrcPath := path.Join(dir, ".terraform.d", "credentials.tfrc.json")
+	file, err := ioutil.ReadFile(tfrcPath)
+	if err != nil {
+		return "", err
+	}
+	var result map[string]interface{}
+	err = json.Unmarshal(file, &result)
+	if err != nil {
+		return "", err
+	}
+	credentials, exists := result["credentials"]
+	if !exists {
+		return "", fmt.Errorf("could not find credentials for %s", u.Host)
+	}
+	host, exists := credentials.(map[string]interface{})[u.Host]
+	if !exists {
+		return "", fmt.Errorf("could not find credentials for %s", u.Host)
+	}
+	token, exists := host.(map[string]interface{})["token"]
+	if !exists {
+		return "", fmt.Errorf("could not find credentials for %s", u.Host)
+	}
+	ret, ok := token.(string)
+	if !ok {
+		return "", fmt.Errorf("could not find credentials for %s", u.Host)
+	}
+	return ret, nil
 }
 
 func processFile(path string) (*TerraformConfig, error) {
@@ -85,6 +115,9 @@ func processFile(path string) (*TerraformConfig, error) {
 				continue
 			}
 			if strings.Contains(err.Error(), "Unsupported argument") {
+				continue
+			}
+			if strings.Contains(err.Error(), "Extraneous JSON object property") {
 				continue
 			}
 			errors = append(errors, err)
@@ -114,7 +147,7 @@ func parseJsonFile(path string) (*hcl.File, error) {
 		return nil, err
 	}
 
-	file, diag := json.Parse(content, path)
+	file, diag := tJson.Parse(content, path)
 	if diag.HasErrors() {
 		return nil, diag
 	}

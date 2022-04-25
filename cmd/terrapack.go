@@ -10,9 +10,10 @@ func newTerrapackCmd() *cobra.Command {
 	var cwd string
 
 	cmd := &cobra.Command{
-		Use:   "terrapack",
-		Short: "terrapack",
-		Long:  "Terraform Packer and API runner workflow",
+		Use:          "terrapack",
+		Short:        "terrapack",
+		Long:         "Terraform Packer and API runner workflow",
+		SilenceUsage: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if cwd != "" {
 				if err := os.Chdir(cwd); err != nil {
