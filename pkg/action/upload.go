@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/adrianord/terrapack/pkg/helpers"
 	"github.com/go-git/go-git/v5"
@@ -17,6 +18,8 @@ type Upload struct {
 	Url          string
 	Message      string
 	Path         string
+	Apply        bool
+	Wait         bool
 }
 
 func NewUpload() *Upload {
@@ -57,7 +60,7 @@ func (u *Upload) Run() error {
 	}
 
 	configVersion, err := client.ConfigurationVersions.Create(ctx, workspace.ID, tfe.ConfigurationVersionCreateOptions{
-		AutoQueueRuns: tfe.Bool(false),
+		AutoQueueRuns: tfe.Bool(u.Apply),
 	})
 	if err != nil {
 		return err
@@ -80,6 +83,13 @@ func (u *Upload) Run() error {
 	fmt.Printf("Created run %s\n", run.ID)
 	runUrl := fmt.Sprintf("%s/app/%s/workspaces/%s/runs/%s", config.Address, workspaceInfo.Organization, workspaceInfo.Workspace, run.ID)
 	fmt.Printf("Check out the run at: %s\n", runUrl)
+
+	if u.Wait {
+		fmt.Println("Waiting for run to apply...")
+		if err := waitForRunToApply(ctx, client, run.ID); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
@@ -195,6 +205,17 @@ func (u *Upload) upload(ctx context.Context, client *tfe.Client, configVersion *
 	return nil
 }
 
-func constructRunUrl(clientConfig tfe.Config, organization, workspace, runID string) string {
-	return fmt.Sprintf("%s/app/%s/workspaces/%s/runs/%s", clientConfig.Address, organization, workspace, runID)
+func waitForRunToApply(ctx context.Context, client *tfe.Client, runID string) error {
+	for {
+		run, err := client.Runs.Read(ctx, runID)
+		if err != nil {
+			return err
+		}
+		if run.Status == tfe.RunApplied || run.Status == tfe.RunPlannedAndFinished {
+			fmt.Printf("Run applied with status: %s\n", run.Status)
+			break
+		}
+		time.Sleep(time.Second)
+	}
+	return nil
 }

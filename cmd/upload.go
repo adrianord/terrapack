@@ -19,11 +19,13 @@ func newUploadCmd() *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.StringVarP(&upload.Organization, "organization", "o", "", "Organization")
-	flags.StringVarP(&upload.Workspace, "workspace", "w", "", "Workspace")
+	flags.StringVarP(&upload.Organization, "organization", "", "", "Organization")
+	flags.StringVarP(&upload.Workspace, "workspace", "", "", "Workspace")
 	flags.StringVarP(&upload.Token, "token", "t", "", "Token")
 	flags.StringVarP(&upload.Url, "url", "u", "", "URL")
 	flags.StringVarP(&upload.Message, "message", "m", "", "Message")
+	flags.BoolVarP(&upload.Apply, "apply", "a", false, "Apply")
+	flags.BoolVarP(&upload.Wait, "wait", "w", false, "Wait")
 
 	return cmd
 }
