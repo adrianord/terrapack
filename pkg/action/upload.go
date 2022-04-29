@@ -3,6 +3,7 @@ package action
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/adrianord/terrapack/pkg/helpers"
 	"github.com/go-git/go-git/v5"
@@ -27,7 +28,7 @@ func (u *Upload) Run() error {
 		Address: u.Url,
 		Token:   u.Token,
 	}
-	err := setToken(config)
+	err := setTokenAndAddress(config)
 	if err != nil {
 		return err
 	}
@@ -77,6 +78,8 @@ func (u *Upload) Run() error {
 		return err
 	}
 	fmt.Printf("Created run %s\n", run.ID)
+	runUrl := fmt.Sprintf("%s/app/%s/workspaces/%s/runs/%s", config.Address, workspaceInfo.Organization, workspaceInfo.Workspace, run.ID)
+	fmt.Printf("Check out the run at: %s\n", runUrl)
 
 	return nil
 }
@@ -94,7 +97,7 @@ type workspaceInfo struct {
 	Workspace    string
 }
 
-func setToken(c *tfe.Config) error {
+func setTokenAndAddress(c *tfe.Config) error {
 	if c.Token != "" {
 		return nil
 	}
@@ -111,9 +114,13 @@ func setToken(c *tfe.Config) error {
 
 	token, err := helpers.FindTerraformToken(url)
 	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error: unable to find Terraform token")
 		return err
 	}
 	c.Token = token
+	if c.Address == "" {
+		c.Address = defaults.Address
+	}
 	return nil
 }
 
@@ -186,4 +193,8 @@ func (u *Upload) upload(ctx context.Context, client *tfe.Client, configVersion *
 	}
 
 	return nil
+}
+
+func constructRunUrl(clientConfig tfe.Config, organization, workspace, runID string) string {
+	return fmt.Sprintf("%s/app/%s/workspaces/%s/runs/%s", clientConfig.Address, organization, workspace, runID)
 }

@@ -105,6 +105,9 @@ func processFile(path string) (*TerraformConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w", err)
 	}
+	if file == nil {
+		return nil, nil
+	}
 
 	var config TerraformConfig
 	diag := gohcl.DecodeBody(file.Body, nil, &config)
@@ -138,7 +141,7 @@ func parseFile(path string) (*hcl.File, error) {
 	if strings.HasSuffix(path, ".tf") {
 		return parseHCLFile(path)
 	}
-	return nil, fmt.Errorf("unsupported file type")
+	return nil, nil
 }
 
 func parseJsonFile(path string) (*hcl.File, error) {
