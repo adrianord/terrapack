@@ -213,5 +213,7 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+
+terrapack
 # End of https://www.toptal.com/developers/gitignore/api/git,macos,linux,windows,visualstudiocode,goland,go
 
