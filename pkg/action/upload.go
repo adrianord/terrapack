@@ -2,6 +2,7 @@ package action
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/adrianord/terrapack/pkg/helpers"
 	"github.com/go-git/go-git/v5"
@@ -40,6 +41,7 @@ func (u *Upload) Run() error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("Uploading to %s/%s\n", workspaceInfo.Organization, workspaceInfo.Workspace)
 
 	ctx := context.Background()
 
@@ -59,12 +61,13 @@ func (u *Upload) Run() error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("Created configuration version %s\n", configVersion.ID)
 
-	if err := client.ConfigurationVersions.Upload(ctx, configVersion.UploadURL, u.Path); err != nil {
+	if err := u.upload(ctx, client, configVersion); err != nil {
 		return err
 	}
 
-	_, err = client.Runs.Create(ctx, tfe.RunCreateOptions{
+	run, err := client.Runs.Create(ctx, tfe.RunCreateOptions{
 		Type:                 "run",
 		Workspace:            workspace,
 		ConfigurationVersion: configVersion,
@@ -73,6 +76,7 @@ func (u *Upload) Run() error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("Created run %s\n", run.ID)
 
 	return nil
 }
@@ -162,4 +166,24 @@ func getHeadCommitMessage(path string) (string, error) {
 	}
 
 	return commit.Message, err
+}
+
+func (u *Upload) upload(ctx context.Context, client *tfe.Client, configVersion *tfe.ConfigurationVersion) error {
+	if err := client.ConfigurationVersions.Upload(ctx, configVersion.UploadURL, u.Path); err != nil {
+		return err
+	}
+
+	fmt.Println("Waiting for upload to complete...")
+
+	for {
+		current, err := client.ConfigurationVersions.Read(ctx, configVersion.ID)
+		if err != nil {
+			return err
+		}
+		if current.Status == tfe.ConfigurationUploaded {
+			break
+		}
+	}
+
+	return nil
 }
