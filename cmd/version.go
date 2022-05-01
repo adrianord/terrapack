@@ -13,7 +13,9 @@ func newVersionCmd() *cobra.Command {
 		Short: "Print the version number of terrapack",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println("Terrapack version:", version.Version)
+			fmt.Println("Version:", version.Version)
+			fmt.Println("Commit:", version.CommitSha)
+			fmt.Println("Build date:", version.BuildDate)
 			return nil
 		},
 	}

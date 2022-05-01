@@ -11,7 +11,9 @@ builds:
       - windows
       - darwin
     ldflags:
-      - X github.com/adrianord/terrapack/pkg/version.Version={{.Tag}}
+      - -X github.com/adrianord/terrapack/pkg/version.Version={{.Tag}}
+      - -X github.com/adrianord/terrapack/pkg/version.CommitSha={{.ShortCommit}}
+      - -X github.com/adrianord/terrapack/pkg/version.BuildDate={{.Date}}
 archives:
   - replacements:
       darwin: Darwin
