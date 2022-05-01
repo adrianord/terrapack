@@ -3,6 +3,7 @@
         "gohcl",
         "hashicorp",
         "hclsyntax",
+        "terrapack",
         "tfrc"
     ]
 }
